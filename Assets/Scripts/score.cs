@@ -16,5 +16,11 @@ public class score : MonoBehaviour
 
             Destroy(other.gameObject);
         }
+        else if (other.CompareTag("tractor"))
+    {
+        print("barkhord");
+        gamemanager.instance.LoseGame();
+    }
+
     }
 }

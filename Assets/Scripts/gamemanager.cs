@@ -12,9 +12,9 @@ public class gamemanager : MonoBehaviour
     [Header("Game Data")]
     public int totalFruits;
     public int collectedFruits;
-    public float time = 60f;
+    public float time = 120f;
 
-    private float startTime = 60f;
+    private float startTime = 120f;
     private bool gameEnded = false;
     private bool gameStarted = false;
 
@@ -26,10 +26,23 @@ public class gamemanager : MonoBehaviour
     public GameObject winPanel;
     public GameObject losePanel;
     public GameObject settingsPanel;
-    public Toggle soundToggle;
-    public Slider volumeSlider;
     public GameObject noticeBoard;
 
+    [Header("UI Controls")]
+    public Toggle soundToggle;
+    public Slider volumeSlider;
+
+    [Header("Audio")]
+    public AudioSource farmAudio;
+    public AudioSource sfxAudio;
+    public AudioClip collectClip;
+    public AudioClip loseClip;
+
+    private IEnumerator FreezeGame()
+    {
+    yield return new WaitForSecondsRealtime(0.5f);
+    Time.timeScale = 0f;
+    }
     void Awake()
     {
         instance = this;
@@ -50,12 +63,23 @@ public class gamemanager : MonoBehaviour
         startPanel.SetActive(true);
         winPanel.SetActive(false);
         losePanel.SetActive(false);
+        settingsPanel.SetActive(false);
 
         scoreText.gameObject.SetActive(false);
         timerText.gameObject.SetActive(false);
 
         if (noticeBoard != null)
             noticeBoard.SetActive(false);
+
+        // ===== AUDIO INIT =====
+        volumeSlider.value = 1f;
+        soundToggle.isOn = true;
+
+        farmAudio.mute = false;
+        sfxAudio.mute = false;
+
+        farmAudio.volume = 1f;
+        sfxAudio.volume = 1f;
     }
 
     void Update()
@@ -82,14 +106,17 @@ public class gamemanager : MonoBehaviour
 
     public void AddFruit()
     {
-        if (!gameEnded)
-            collectedFruits++;
+        if (gameEnded) return;
+
+        collectedFruits++;
+
+        if (collectClip != null)
+            sfxAudio.PlayOneShot(collectClip);
     }
 
     public void StartGame()
     {
         gameStarted = true;
-
         Time.timeScale = 1f;
 
         startPanel.SetActive(false);
@@ -103,8 +130,9 @@ public class gamemanager : MonoBehaviour
 
     void WinGame()
     {
-        gameEnded = true;
+        if (gameEnded) return;
 
+        gameEnded = true;
         Time.timeScale = 0f;
 
         winPanel.SetActive(true);
@@ -113,49 +141,65 @@ public class gamemanager : MonoBehaviour
             noticeBoard.SetActive(false);
     }
 
-    void LoseGame()
-    {
-        gameEnded = true;
+    public void LoseGame()
+{
+    if (gameEnded) return;
 
-        Time.timeScale = 0f;
+    gameEnded = true;
 
-        losePanel.SetActive(true);
+    if (loseClip != null)
+        sfxAudio.PlayOneShot(loseClip);
 
-        if (noticeBoard != null)
-            noticeBoard.SetActive(false);
-    }
+    losePanel.SetActive(true);
+
+    if (noticeBoard != null)
+        noticeBoard.SetActive(false);
+
+    StartCoroutine(FreezeGame());
+}
 
     public void RestartGame()
     {
         Time.timeScale = 1f;
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
+
+    // ===== AUDIO SYSTEM (FIXED) =====
+
     public void SetVolume(float volume)
     {
-    AudioListener.volume = volume;
+        volume = Mathf.Clamp01(volume);
+
+        farmAudio.volume = volume;
+        sfxAudio.volume = volume;
+
+        // sync toggle state
+        if (soundToggle.isOn)
+        {
+            farmAudio.mute = false;
+            sfxAudio.mute = false;
+        }
     }
+
     public void ToggleSound(bool isOn)
     {
-    if (isOn)
-    {
-        AudioListener.volume = volumeSlider.value;
+        farmAudio.mute = !isOn;
+        sfxAudio.mute = !isOn;
     }
-    else
-    {
-        AudioListener.volume = 0f;
-    }
-    }
+
+    // ===== SETTINGS =====
+
     public void OpenSettings()
     {
-    settingsPanel.SetActive(true);
-
-    Time.timeScale = 0f;
+        settingsPanel.SetActive(true);
+        Time.timeScale = 0f;
     }
 
     public void CloseSettings()
     {
-    settingsPanel.SetActive(false);
-
-    Time.timeScale = 1f;
+        settingsPanel.SetActive(false);
+        Time.timeScale = 1f;
     }
+    
+
 }
